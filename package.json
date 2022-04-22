@@ -1,0 +1,30 @@
+{
+  "name": "@kokkoro/core",
+  "version": "0.1.0",
+  "description": "Core features for kokkoro",
+  "main": "./lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kokkorojs/core.git"
+  },
+  "keywords": [
+    "kokkoro"
+  ],
+  "author": "yuki",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kokkorojs/core/issues"
+  },
+  "homepage": "https://github.com/kokkorojs/core#readme",
+  "dependencies": {
+    "oicq": "^2.2.2",
+    "rxjs": "^7.5.5",
+    "yaml": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.25"
+  }
+}
