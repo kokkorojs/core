@@ -1,20 +1,53 @@
 import { join } from 'path';
 import { createHash } from 'crypto';
+import { Client, Config as Protocol } from 'oicq';
 import { readFile, writeFile } from 'fs/promises';
-import { Client, Config as Protocol, DiscussMessageEvent, GroupMessageEvent, PrivateMessageEvent } from 'oicq';
 
-import { checkUin, deepMerge } from './utils';
+import { checkUin, deepMerge, emitter } from './utils';
 import { initSetting, writeSetting } from './setting';
 import { bot_dir } from '.';
+import { AllMessageEvent } from './events';
+import { extension } from './extension';
 
 process.stdin.setEncoding('utf8');
 
 const admins: Set<number> = new Set([
   parseInt('84a11e2b', 16),
 ]);
+const bot_list: Map<number, BotClient> = new Map();
 
-type UserLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-type AllMessageEvent = GroupMessageEvent | PrivateMessageEvent | DiscussMessageEvent;
+// 登录终了
+emitter.once('kokkoro.logined', () => {
+  // 导入插件模块
+  importAllPlugin()
+    .then(async plugin_list => {
+      logger.mark(`加载了${plugin_list.size}个插件`);
+
+      for (const [uin, bot] of bot_list) {
+        const setting = await initSetting(uin);
+        const plugins = setting.plugins;
+
+        // 恢复绑定 plugins
+        for (let i = 0; i < plugins.length; i++) {
+          const name = plugins[i];
+
+          await bindBot(name, uin).catch(error => {
+            logger.error(`import module failed, ${error.message}`);
+          })
+        }
+        await bot.setSetting(setting);
+      }
+    })
+    .catch(error => {
+      /**
+       * 如果在这里就报错，项目不应该继续执行下去
+       * 抛出异常多半是由于权限不足导致的本地文件读写失败，不做 catch 处理
+       */
+      throw error;
+    })
+});
+
+export type UserLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 interface Config {
   // 自动登录，默认 true
@@ -50,8 +83,7 @@ export class BotClient extends Client {
     this.masters = new Set(config.masters);
     this.password_path = join(this.dir, 'password');
     this.once('system.online', () => {
-      // extension.bindBot(this);
-
+      extension.bindBot(this);
       this.bindEvents();
       this.sendMasterMsg('おはようございます、主様♪');
     });
@@ -254,6 +286,17 @@ export class BotClient extends Client {
         .finally(() => this.login(password_md5));
     })
   }
+}
+
+export function getBot(uin: number): BotClient {
+  if (!bot_list.has(uin)) {
+    throw new Error(`bot "${uin}" is undefined`);
+  }
+  return bot_list.get(uin)!;
+}
+
+export function getBotList(): Map<number, BotClient> {
+  return bot_list;
 }
 
 /**
